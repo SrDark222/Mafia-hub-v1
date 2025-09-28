@@ -11,7 +11,7 @@ local donos = {
     "PabinhoPla",
     "jzr1v",
     "biel90052",
-    "PabinhoPlay"
+    "PabinhoPlay",
     "silvax119"
 }
 
