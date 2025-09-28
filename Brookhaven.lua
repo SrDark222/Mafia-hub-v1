@@ -1,5 +1,4 @@
---[[
-By dkzin (developer crédits is all of dk) ]] 
+
 
 
 local Players = game:GetService("Players")
@@ -11,7 +10,9 @@ local donos = {
     "Pietraxavier09",
     "PabinhoPla",
     "jzr1v",
-    "biel90052"
+    "biel90052",
+    "PabinhoPlay"
+    "silvax119"
 }
 
 local isDono = false
@@ -87,6 +88,53 @@ UserInputService.JumpRequest:Connect(function()
 end)
 
 player:AddToggle({
+    Name="Noclip",Default=false,
+    Callback=function(s)noclip=s end
+})
+task.spawn(function()
+    while task.wait() do
+        if noclip then
+            pcall(function()
+                for _,v in pairs(game.Players.LocalPlayer.Character:GetDescendants())do
+                    if v:IsA("BasePart") then v.CanCollide=false end
+                end
+            end)
+        end
+    end
+end)
+
+player:AddSection({"Fly"})
+
+player:AddButton({"Fly mobile", function(Value)
+loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"))()
+end})
+
+player:AddSection({"Outros"})
+player:AddButton({
+    Name="Anti AFK",
+    Callback=function()
+        local vu=game:GetService("VirtualUser")
+        game.Players.LocalPlayer.Idled:Connect(function()
+            vu:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+            task.wait(1)
+            vu:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+        end)
+    end
+})
+player:AddButton({
+    Name="Reset",
+    Callback=function()pcall(function()game.Players.LocalPlayer.Character:BreakJoints()end)end
+})
+
+-- TROLL
+local troll = Window:MakeTab({"Troll","snowflake"})
+troll:AddSection({"Brincadeiras"})
+troll:AddParagraph({"Aviso","Funções troll vão ser adicionadas em breve."})
+
+-- SUPER TROLL
+local superTroll = Window:MakeTab({"Super Troll","smile"})
+superTroll:AddSection({"Brincadeiras Avançadas"})
+superTroll:AddParagraph({"Aviso","Ainda em desenvolvimento..."})player:AddToggle({
     Name="Noclip",Default=false,
     Callback=function(s)noclip=s end
 })
