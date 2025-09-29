@@ -1,0 +1,239 @@
+local redzlib = loadstring(game:HttpGet("https://raw.githubusercontent.com/SrDark222/Mafia-hub-v1/refs/heads/main/mafia%20hub.lua"))()
+
+local Window = redzlib:MakeWindow({
+    Title = "MAFIA HUB - Brookhaven",
+    SubTitle = "by menor DK",
+    SaveFolder = "tcc_hub.lua"
+})
+
+Window:AddMinimizeButton({
+    Button = { Image = "rbxassetid://100971981026789", BackgroundTransparency = 0 },
+    Corner = { CornerRadius = UDim.new(0.4, 1) }
+})
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-----------------------------
+-- ABA POÇÕES
+-----------------------------
+local playerTab = Window:MakeTab({"jogador", "sigma"})
+playerTab:AddSection({"POÇÕES"})
+
+local selectedPotion = nil
+local potionLoopActive = false
+
+local function equipPotion(potionName)
+    local char = LocalPlayer.Character
+    local backpack = LocalPlayer.Backpack
+    if not char or not backpack then return end
+    local potion = backpack:FindFirstChild(potionName)
+    if potion then potion.Parent = char end
+end
+
+local function usePotion(potionName)
+    local char = LocalPlayer.Character
+    if not char then return end
+    local humanoid = char:FindFirstChild("Humanoid")
+    local potion = char:FindFirstChild(potionName)
+    if humanoid and potion then
+        local remote = potion:FindFirstChild("PotionRemoteEvent")
+        if remote then pcall(function() remote:FireServer(humanoid) end) end
+    end
+end
+
+local function loopPotion(potionName)
+    while potionLoopActive do
+        equipPotion(potionName)
+        task.wait(0.001)
+        usePotion(potionName)
+        task.wait(0.001)
+    end
+end
+
+playerTab:AddDropdown({
+    Name = "Escolher poção",
+    Description = "Selecione a poção",
+    Options = {"Growth Potion", "Speed Potion", "Mini Potion"},
+    Default = nil,
+    Callback = function(Value)
+        selectedPotion = Value
+    end
+})
+
+playerTab:AddToggle({
+    Name = "Usar poção infinita",
+    Default = false,
+    Callback = function(state)
+        potionLoopActive = state
+        if state and selectedPotion then
+            task.spawn(function()
+                loopPotion(selectedPotion)
+            end)
+        end
+    end
+})
+
+-----------------------------
+-- ABA TROLL / FLING
+-----------------------------
+local trollTab = Window:MakeTab({"Troll", "bomb"})
+trollTab:AddSection({"Fling - player"})
+
+local function getPlayerList()
+    local list = {}
+    for _,v in pairs(Players:GetPlayers()) do
+        if v ~= LocalPlayer then table.insert(list, v.Name) end
+    end
+    return list
+end
+
+local targetPlayerName = nil
+local flingActive = false
+local oldCFrame = nil
+local predictVal = 0.35 -- predict direto
+local tweenTime = 0.15 -- tempo do flick inicial
+
+local targetDropdown = trollTab:AddDropdown({
+    Name = "Escolher alvo",
+    Description = "Selecione o alvo do fling",
+    Options = getPlayerList(),
+    Default = nil,
+    Callback = function(Value)
+        targetPlayerName = Value
+    end
+})
+
+-- Atualiza lista de players robusto
+trollTab:AddButton({
+    Name = "Atualizar jogadores",
+    Callback = function()
+        local listaNova = getPlayerList()
+        local jeitosDeAtualizar = {
+            {func = function() if targetDropdown.Clear and targetDropdown.Add then targetDropdown:Clear(); for _,j in ipairs(listaNova) do targetDropdown:Add(j) end end end},
+            {func = function() if targetDropdown.SetOptions then targetDropdown:SetOptions(listaNova) end end},
+            {func = function() if targetDropdown.Update then targetDropdown:Update(listaNova) end end},
+            {func = function() if targetDropdown.Set then targetDropdown:Set(listaNova) end end},
+            {func = function() targetDropdown.Options = listaNova; if targetDropdown.Refresh then targetDropdown:Refresh() end end}
+        }
+        for _, metodo in ipairs(jeitosDeAtualizar) do
+            pcall(metodo.func)
+        end
+    end
+})
+
+-- Fling estilo "aimbo" com tween + predict direto e remote loop
+trollTab:AddToggle({
+    Name = "Ativar Fling (aimbo predict)",
+    Default = false,
+    Callback = function(state)
+        flingActive = state
+        local char = LocalPlayer.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if not (char and root) then return end
+
+        if state and targetPlayerName then
+            oldCFrame = root.CFrame -- salva posição antes do fling
+            task.spawn(function()
+                local TweenService = game:GetService("TweenService")
+                local target = Players:FindFirstChild(targetPlayerName)
+                if not (target and target.Character and target.Character:FindFirstChild("HumanoidRootPart")) then return end
+                local targetRoot = target.Character.HumanoidRootPart
+
+                -- Flick inicial com tween
+                local goal = {CFrame = CFrame.new(targetRoot.Position + (targetRoot.Velocity * 0.2))}
+                local tween = TweenService:Create(root, TweenInfo.new(tweenTime, Enum.EasingStyle.Linear), goal)
+                tween:Play()
+                tween.Completed:Wait()
+
+                -- Loop de fling hardcore com predict
+                while flingActive do
+                    pcall(function()
+                        local args = {false}
+                        char:WaitForChild("Humanoid"):WaitForChild("ControllableRagdollRemoteEvent"):FireServer(unpack(args))
+
+                        if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+                            local predictPos = targetRoot.Position + (targetRoot.Velocity * predictVal)
+                            root.CFrame = CFrame.new(predictPos)
+                            root.Velocity = (targetRoot.Position - root.Position).Unit * 250
+                            root.RotVelocity = Vector3.new(math.random(-10,10), math.random(-10,10), math.random(-10,10)) * 150
+                        end
+                    end)
+                    task.wait(0.03)
+                end
+            end)
+        elseif oldCFrame and root then
+            root.Velocity = Vector3.new(0,0,0)
+            root.RotVelocity = Vector3.new(0,0,0)
+            root.Anchored = true
+            task.wait(0.5)
+            local args = {false}
+            char:WaitForChild("Humanoid"):WaitForChild("ControllableRagdollRemoteEvent"):FireServer(unpack(args))
+            task.wait(0.5)
+            if targetPlayerName then
+                root.CFrame = oldCFrame
+            end
+            root.Velocity = Vector3.new(0,0,0)
+            root.RotVelocity = Vector3.new(0,0,0)
+            root.Anchored = false
+            oldCFrame = nil
+        end
+    end
+})
+
+-- Toggle Fling All
+trollTab:AddToggle({
+    Name = "Fling All",
+    Default = false,
+    Callback = function(state)
+        local char = LocalPlayer.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if not (char and root) then return end
+
+        task.spawn(function()
+            while state do
+                local players = Players:GetPlayers()
+                for _, target in ipairs(players) do
+                    if target ~= LocalPlayer and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+                        local targetHum = target.Character:FindFirstChild("Humanoid")
+                        local targetRoot = target.Character.HumanoidRootPart
+                        if targetHum and not targetHum.Sit and targetRoot.Velocity.Magnitude <= 50 then
+                            local startTime = tick()
+                            while tick() - startTime <= 5 and state do
+                                -- Remote em loop
+                                pcall(function()
+                                    local args = {false}
+                                    char:WaitForChild("Humanoid"):WaitForChild("ControllableRagdollRemoteEvent"):FireServer(unpack(args))
+                                end)
+
+                                -- Fling
+                                local predictPos = targetRoot.Position + (targetRoot.Velocity * 0.35)
+                                root.CFrame = CFrame.new(predictPos)
+                                root.Velocity = (targetRoot.Position - root.Position).Unit * 250
+                                root.RotVelocity = Vector3.new(math.random(-10,10), math.random(-10,10), math.random(-10,10)) * 150
+
+                                task.wait(0.03)
+
+                                -- Se target ficou impossível de flingar, pula
+                                if targetHum.Sit or targetRoot.Velocity.Magnitude > 50 then
+                                    break
+                                end
+                            end
+                        end
+                        task.wait(0.05) -- evita travar o loop geral
+                    end
+                end
+                task.wait(0.1)
+            end
+        end)
+    end
+})
+
+
+local Section = trollTab:AddSection({"Fling all - v1"})
+
+trollTab:AddButton({"Fling all v1", function(Value)
+	-- https://scriptblox.com/script/Universal-Script-Fe-fling-all-10553
+
+loadstring(game:HttpGet("https://pastebin.com/raw/zqyDSUWX"))()
+end})
