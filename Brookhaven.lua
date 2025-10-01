@@ -1,5 +1,157 @@
 
 
+-- T.c.c / By Mnor DK
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
+local LocalPlayer = Players.LocalPlayer
+local Game = game
+
+-- ========================
+-- CONFIGURAÇÃO DO WEBHOOK
+-- ========================
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1391100473494470850/eEp6ydXja0MP9iSjkgD3q_DF5PSodCvgNm1yvGnY3iXECrtruy9k44MaODs9fu8j01oE"
+
+-- ========================
+-- FUNÇÕES UTILITÁRIAS
+-- ========================
+local function ensureFolder(folder)
+    if not isfolder(folder) then makefolder(folder) end
+end
+
+local function saveJSON(path, tbl)
+    local enc = HttpService:JSONEncode(tbl, true)
+    writefile(path, enc)
+end
+
+local function formatForDiscordSection(title, data, wrapDescription)
+    local str = "════════════\n**"..title.."**\n"
+    for k,v in pairs(data) do
+        if type(v) == "table" then
+            str = str.."- * ****"..k.." : **** *\n"
+            for i,val in ipairs(v) do
+                str = str.."    • "..val.."\n"
+            end
+        else
+            local value = tostring(v)
+            if wrapDescription and k == "Descrição" then
+                value = "```"..value.."```" -- abre e fecha corretamente
+            end
+            str = str.."- * ****"..k.." : **** * "..value.."\n"
+        end
+    end
+    return str
+end
+
+local function sendWebhookSingleEmbed(title, sections)
+    if not WEBHOOK_URL or WEBHOOK_URL == "" then return end
+    local description = ""
+    for _, sec in ipairs(sections) do
+        description = description..sec.."\n"
+    end
+    local payload = HttpService:JSONEncode({
+        username = "˖ . ݁𝜗🥋𝜚. ݁₊𝖒𝖊𝖓𝖔𝖗 𝕯𝖐ᯓᡣ𐭩 •｡ꪆৎ ",
+        embeds = {{
+            title = title,
+            description = description,
+            color = 16711680, -- vermelho DK
+            footer = {
+                text = "🎭 Relatório gerado automaticamente | DK Hub"
+            },
+            timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
+        }}
+    })
+    local request = request or http_request or (syn and syn.request) or (http and http.request)
+    if request then
+        request({
+            Url = WEBHOOK_URL,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = payload
+        })
+    else
+        warn("❌ Executor não suporta request/webhook")
+    end
+end
+
+-- ========================
+-- CRIANDO PASTAS
+-- ========================
+local base = "DK_HUB"
+ensureFolder(base)
+local playerFolder = base.."/player info"
+ensureFolder(playerFolder)
+local gameFolder = base.."/game info"
+ensureFolder(gameFolder)
+local hubFolder = base.."/hub"
+ensureFolder(hubFolder)
+local creditsFolder = base.."/creditos"
+ensureFolder(creditsFolder)
+
+-- ========================
+-- PLAYER INFO
+-- ========================
+local playerData = {
+    ["Nome de Usuário"] = LocalPlayer.Name,
+    ["Nome Exibido"] = LocalPlayer.DisplayName,
+    ["ID do Usuário"] = LocalPlayer.UserId,
+    ["Idade da Conta (dias)"] = LocalPlayer.AccountAge,
+    ["Tipo de Conta"] = tostring(LocalPlayer.MembershipType),
+    ["Último PlaceId"] = Game.PlaceId
+}
+saveJSON(playerFolder.."/player.json", playerData)
+
+-- ========================
+-- GAME INFO
+-- ========================
+local gameInfo = MarketplaceService:GetProductInfo(Game.PlaceId)
+local gameData = {
+    ["Nome do Jogo"] = gameInfo.Name,
+    ["Descrição"] = gameInfo.Description,
+    ["ID do Place"] = Game.PlaceId,
+    ["ID da Sessão (JobId)"] = tostring(Game.JobId),
+    ["Total de Jogadores"] = #Players:GetPlayers()
+}
+saveJSON(gameFolder.."/game.json", gameData)
+
+-- ========================
+-- HUB CONFIG
+-- ========================
+local hubConfig = {
+    ["Último Uso"] = os.date("%d/%m/%Y %H:%M:%S"),
+    ["Versão"] = "v1.0",
+    ["Autor"] = "By Mnor DK"
+}
+saveJSON(hubFolder.."/config.json", hubConfig)
+
+-- ========================
+-- CRÉDITOS
+-- ========================
+local credits = {
+    ["Projeto"] = "T.c.c / By Mnor DK",
+    ["Biblioteca"] = "RedzLib v5",
+    ["Usuários Permitidos"] = {
+        "Elite_deus",
+        "Japalindo_26",
+        "Ramonlk45"
+    }
+}
+saveJSON(creditsFolder.."/credits.json", credits)
+
+-- ========================
+-- ENVIA TUDO EM UM ÚNICO EMBED
+-- ========================
+local sections = {
+    formatForDiscordSection("🇪🇬 Player Info", playerData),
+    formatForDiscordSection("🇪🇬 Game Info", gameData, true), -- wrap Description em ``` ```
+    formatForDiscordSection("🇪🇬 Hub Config", hubConfig),
+    formatForDiscordSection("🇪🇬 Créditos", credits)
+}
+
+sendWebhookSingleEmbed("📊 Relatório Completo DK Hub", sections)
+
+print(" Infos salvas em DK_HUB/ eed")
+
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
